@@ -1543,8 +1543,24 @@ function draw() {
   drawGround(); drawBird();
   if (gameState === 'playing' || gameState === 'waiting' || gameState === 'replay') drawFloats();
 }
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-
+const TARGET_DT = 1000 / 60;
+let lastTs = 0;
+let accum = 0;
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  let dt = ts - lastTs;
+  lastTs = ts;
+  if (dt > 100) dt = 100;
+  accum += dt;
+  let steps = 0;
+  while (accum >= TARGET_DT && steps < 5) {
+update();
+    accum -= TARGET_DT;
+    steps++;
+  }
+  draw();
+  requestAnimationFrame(loop);
+}
 canvas.addEventListener('mousedown', e => { e.preventDefault(); flap(); });
 canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, { passive: false });
 window.addEventListener('keydown', e => {
