@@ -215,15 +215,15 @@ const STORAGE_KEY = 'hoskyFlyer_v7';
    Paste your web app config below from Firebase Console.
    Leave apiKey empty to use this device only (localStorage).
 */
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /hosky/{docId} {
-      allow read: if true;
-      allow write: if true;
-    }
-  }
-}
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+ 
 let db = null;
 let cloudReady = false;
 
