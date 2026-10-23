@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0d0d">
+<title>Hosky Flyer v1.10.1</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0d0d0d;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; font-family: system-ui, -apple-system, sans-serif;
+    overflow: hidden; touch-action: none;
+  }
+  #game-container {
+    position: relative;
+    box-shadow: 0 0 50px rgba(0,0,0,0.7);
+    border-radius: 12px; overflow: hidden;
+  }
+  canvas { display: block; background: #87CEEB; touch-action: none; position: relative; z-index: 1; }
+  #ui { z-index: 2; }
+  #ui {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  #score {
+    position: absolute; top: 8px; right: 10px;
+    font-size: 28px; font-weight: 800;
+    color: white; text-shadow: 2px 2px 0 #222; letter-spacing: 1px;
+    text-align: right;
+  }
+  #level {
+    position: absolute; top: 38px; right: 10px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.95); text-shadow: 1px 1px 0 #222; font-weight: 600;
+    text-align: right;
+  }
+  #versionTag {
+    position: absolute; bottom: 8px; right: 10px;
+    font-size: 11px; color: rgba(255,255,255,0.55);
+    text-shadow: 1px 1px 0 #222;
+  }
+  #pauseBtn {
+    position: absolute; top: 10px; left: 10px;
+    pointer-events: auto; display: none;
+    background: rgba(0,0,0,0.55); color: white; border: 2px solid rgba(255,255,255,0.4);
+    padding: 6px 12px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer;
+  }
+  #pauseBtn:active { transform: scale(0.96); }
+  #musicBtn {
+    position: absolute; bottom: 8px; left: 10px;
+    pointer-events: auto;
+    background: rgba(0,0,0,0.45); color: white; border: 1px solid rgba(255,255,255,0.35);
+    padding: 4px 8px; font-size: 11px; font-weight: 700; border-radius: 8px; cursor: pointer;
+    z-index: 5;
+  }
+  #message {
+    background: linear-gradient(180deg, #1a2744 0%, #0f1a2e 100%);
+    color: white; padding: 14px 16px 16px;
+    border-radius: 18px; text-align: center; width: min(340px, 92%);
+    pointer-events: auto; border: 2px solid rgba(255,220,120,0.35);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+    max-height: 94%; overflow-y: auto;
+  }
+  #message.hidden { display: none !important; }
+  #game-container.playing #ui { pointer-events: none; }
+  #game-container.playing #pauseBtn { pointer-events: auto; }
+  #game-container.playing #gamesPlayedHud { pointer-events: none; display: block; }
+  #message h1 {
+    font-size: 26px; margin: 0 0 6px; letter-spacing: 1px;
+    color: #ffd54a; text-shadow: 0 2px 0 #8a5a00, 0 0 12px rgba(255,200,50,0.35);
+  }
+  #message .prizes {
+    font-size: 11px; opacity: 0.9; margin-bottom: 10px; line-height: 1.45;
+  }
+  #message .prizes .prize-row {
+    display: flex; justify-content: center; gap: 14px; margin-top: 4px; font-weight: 800;
+  }
+  #message .prizes .p1 { color: #ffd54a; }
+  #message .prizes .p2 { color: #e0e0e0; }
+  #message .prizes .p3 { color: #ffb74d; }
+  #message label.user-label {
+    display: block; text-align: left; font-size: 11px; opacity: 0.75; margin-bottom: 4px;
+  }
+  #message input {
+    width: 100%; padding: 10px 12px; margin: 0 0 10px;
+    border-radius: 10px; border: 2px solid #3d4f6f; background: #0c1424;
+    color: white; font-size: 14px; text-align: left;
+  }
+  #message input:focus { outline: none; border-color: #5b8def; }
+  #boardBox, #prevBox {
+    text-align: left; font-size: 12px;
+    background: rgba(0,0,0,0.28); border-radius: 12px; padding: 8px 10px;
+    margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.08);
+  }
+  #boardBox .label { font-weight: 700; font-size: 12px; margin-bottom: 6px; color: #7dffa0; }
+  #prevBox .label { font-weight: 700; font-size: 12px; margin-bottom: 6px; color: #c5a6ff; text-align: center; }
+  #boardBox .row, #prevBox .row {
+    display: flex; align-items: center; gap: 6px; padding: 3px 0;
+  }
+  #boardBox .row .nm, #prevBox .row .nm { flex: 1; font-weight: 600; }
+  #boardBox .row .sc, #prevBox .row .sc { opacity: 0.95; font-variant-numeric: tabular-nums; }
+  #boardBox .meta { opacity: 0.7; font-size: 10px; margin-top: 6px; }
+  #message .btn-row {
+    display: flex; gap: 8px; justify-content: center; margin-top: 4px;
+  }
+  #message button {
+    background: #2f6bff; color: white; border: none; padding: 12px 18px;
+    font-size: 15px; font-weight: 800; border-radius: 12px; cursor: pointer;
+    margin: 0; -webkit-user-select: none; user-select: none;
+    touch-action: manipulation; flex: 1;
+  }
+  #message button:hover { background: #1f56e0; }
+  #message button.replay {
+    background: #6c3ce0; flex: 0; padding: 4px 8px; font-size: 11px; border-radius: 8px;
+  }
+  #message button.replay:hover { background: #5a2fc0; }
+  #message .discord-link {
+    display: inline-block; margin-top: 10px; color: #a78bfa; font-weight: 700;
+    font-size: 13px; text-decoration: none; pointer-events: auto;
+  }
+  #message .discord-link:hover { text-decoration: underline; }
+  #message .ver {
+    margin-top: 6px; font-size: 10px; opacity: 0.45;
+  }
+  #replayBadge {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(124,58,237,0.9); color: white;
+    font-size: 11px; font-weight: 700; padding: 4px 8px;
+    border-radius: 6px; display: none;
+  }
+  #gamesPlayedHud {
+    position: absolute; bottom: 62px; left: 10px;
+    font-size: 11px; color: rgba(255,255,255,0.85);
+    text-shadow: 1px 1px 0 #222; display: none; font-weight: 600;
+  }
+  #winnersBox, #replayPick, #historyBtn { display: none !important; }
+</style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="400" height="600"></canvas>
+    <div id="ui">
+      <div id="score">0</div>
+      <div id="level">Level 1</div>
+      <div id="versionTag">v1.10.1</div>
+      <button id="musicBtn" type="button" title="Background music">♪ On</button>
+      <button id="pauseBtn">Pause</button>
+      <div id="replayBadge">▶ REPLAY</div>
+      <div id="gamesPlayedHud">Games this month: 0</div>
+      <div id="message">
+        <h1>🐾 Hosky Flyer 🐾</h1>
+        <p id="runResult" class="run-result" style="display:none;font-size:12px;line-height:1.4;margin:0 0 8px;opacity:0.95;"></p>
+        <div class="prizes">
+          Monthly Deal Prizes (worthless $HOSKY)
+          <div class="prize-row">
+            <span class="p1">🥇 1B</span>
+            <span class="p2">🥈 600M</span>
+            <span class="p3">🥉 400M</span>
+          </div>
+          <div class="how" style="margin-top:8px;font-size:10px;line-height:1.45;opacity:0.88;text-align:left;">
+            <strong>How to play:</strong> Tap to flap through doghouses <strong>+1</strong>, Grab bone treats for <strong>+2 / +3</strong>. Dare to scoop the ground poo <strong>+5</strong>. Raindrops during storms are <strong>+0.25</strong> each.<br>
+            <strong>Contest:</strong> Join Hosky discord, Enter your Discord name. Play as much as you want — only your <strong>highest score</strong> counts for the month (one board spot per name). Top 3 at month end (Central Time) win the prizes. Board resets on the 1st.
+          </div>
+        </div>
+        <input id="discordInput" type="text" placeholder="Enter Discord username" maxlength="32" autocomplete="off" />
+        <div id="boardBox"></div>
+        <div id="prevBox"></div>
+        <div class="btn-row">
+          <button id="startBtn" type="button" onclick="return window.__hoskyStart ? window.__hoskyStart(event) : false;">🪽 Start Flying</button>
+        </div>
+        <a class="discord-link" href="https://discord.gg/hosky" target="_blank" rel="noopener">Join Discord — discord.gg/hosky</a>
+        <div class="ver">v1.10.1 · only your top score counts · resets 1st (CT)<br><span style="opacity:0.8">Light BGM: Hosky drifts to zero · ♪ toggle bottom-left</span></div>
+        <div id="replayPick"></div>
+        <div id="winnersBox" class="hidden"></div>
+        <button id="historyBtn" class="secondary" style="display:none">History</button>
+      </div>
+    </div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>
+const VERSION = "1.10.1";
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
+const messageEl = document.getElementById('message');
+const startBtn = document.getElementById('startBtn');
+window.__hoskyStart = null;
+const historyBtn = document.getElementById('historyBtn');
+const replayBadge = document.getElementById('replayBadge');
+const discordInput = document.getElementById('discordInput');
+const winnersBox = document.getElementById('winnersBox');
+const boardBox = document.getElementById('boardBox');
+const prevBox = document.getElementById('prevBox');
+const gamesPlayedHud = document.getElementById('gamesPlayedHud');
+const replayPick = document.getElementById('replayPick');
+
+const hoskyImg = new Image();
+hoskyImg.src = "data:image/png;base64,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";
+
+const GRAVITY = 0.32;
+const FLAP_STRENGTH = -7.0;
+const HOUSE_WIDTH = 72;
+const BIRD_SIZE = 44;
+const STORAGE_KEY = 'hoskyFlyer_v7';
+
+/* ===== Firebase (shared leaderboard) =====
+   Paste your web app config below from Firebase Console.
+   Leave apiKey empty to use this device only (localStorage).
+*/
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /hosky/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}
+let db = null;
+let cloudReady = false;
+
+function firebaseEnabled() {
+  return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+}
+
+function initFirebase() {
+  if (!firebaseEnabled()) return false;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    cloudReady = true;
+    return true;
+  } catch (e) {
+    console.warn('Firebase init failed', e);
+    cloudReady = false;
+    return false;
+  }
+}
+
+function defaultCloudCurrent() {
+  return {
+    monthKey: centralMonthKey(),
+    top: [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }],
+    gamesPlayed: 0,
+    updatedAt: Date.now()
+  };
+}
+
+async function loadCloud() {
+  if (!cloudReady) return null;
+  try {
+    const curRef = db.collection('hosky').doc('current');
+    const histRef = db.collection('hosky').doc('history');
+    const rRefs = [0, 1, 2].map(i => db.collection('hosky').doc('r' + i));
+    const pRefs = [0, 1, 2].map(i => db.collection('hosky').doc('prev_r' + i));
+    const snaps = await Promise.all([
+      curRef.get(), histRef.get(),
+      ...rRefs.map(r => r.get()),
+      ...pRefs.map(r => r.get())
+    ]);
+    const curSnap = snaps[0], histSnap = snaps[1];
+    let current = curSnap.exists ? curSnap.data() : defaultCloudCurrent();
+    let history = histSnap.exists && Array.isArray(histSnap.data().months) ? histSnap.data().months : [];
+    if (!current.top || !Array.isArray(current.top)) current.top = defaultCloudCurrent().top;
+    while (current.top.length < 3) current.top.push({ name: '', score: 0 });
+    if (typeof current.gamesPlayed !== 'number') current.gamesPlayed = 0;
+    if (!current.monthKey) current.monthKey = centralMonthKey();
+    const replays = [null, null, null];
+    const prevReplays = [null, null, null];
+    for (let i = 0; i < 3; i++) {
+      if (snaps[2 + i].exists) {
+        const r = snaps[2 + i].data();
+        if (r && r.frames && r.frames.length) replays[i] = r;
+      }
+      if (snaps[5 + i].exists) {
+        const r = snaps[5 + i].data();
+        if (r && r.frames && r.frames.length) prevReplays[i] = r;
+      }
+    }
+    return { current, history, replays, prevReplays };
+  } catch (e) {
+    console.warn('loadCloud failed', e);
+    return null;
+  }
+}
+
+/** Align / write Top 3 shared replays after a score update */
+async function syncCloudReplays(place, frames, name, score, top) {
+  if (!cloudReady) return;
+  try {
+    const oldSnaps = await Promise.all([0, 1, 2].map(i => db.collection('hosky').doc('r' + i).get()));
+    const old = oldSnaps.map(s => s.exists ? s.data() : null);
+    const newSlots = [null, null, null];
+    for (let i = 0; i < 3; i++) {
+      const t = top[i];
+      if (!t || !(t.score > 0)) continue;
+      // New run claims this place
+      if (place > 0 && i === place - 1 && frames && frames.length > 15) {
+        const gp = (window.__hoskyCloudCurrent && window.__hoskyCloudCurrent.gamesPlayed) || 0;
+        newSlots[i] = {
+          name: name,
+          score: score,
+          gamesPlayed: gp,
+          version: VERSION,
+          frames: frames.slice(),
+          savedAt: new Date().toISOString()
+        };
+        continue;
+      }
+      // Reuse existing cloud replay for same name + score
+      for (let j = 0; j < 3; j++) {
+        const o = old[j];
+        if (o && o.frames && o.frames.length &&
+            normName(o.name) === normName(t.name) &&
+            Math.abs((o.score || 0) - t.score) < 0.01) {
+          newSlots[i] = o;
+          break;
+        }
+      }
+    }
+    const writes = [];
+    for (let i = 0; i < 3; i++) {
+      const ref = db.collection('hosky').doc('r' + i);
+      if (newSlots[i]) writes.push(ref.set(newSlots[i]));
+      else writes.push(ref.delete().catch(() => {}));
+    }
+    await Promise.all(writes);
+    window.__hoskyCloudReplays = newSlots;
+  } catch (e) {
+    console.warn('syncCloudReplays failed', e);
+  }
+}
+
+async function archiveReplaysToPrevious() {
+  if (!cloudReady) return;
+  try {
+    const snaps = await Promise.all([0, 1, 2].map(i => db.collection('hosky').doc('r' + i).get()));
+    const writes = [];
+    const prevSlots = [null, null, null];
+    for (let i = 0; i < 3; i++) {
+      if (snaps[i].exists) {
+        const data = snaps[i].data();
+        writes.push(db.collection('hosky').doc('prev_r' + i).set(data));
+        prevSlots[i] = data;
+      } else {
+        writes.push(db.collection('hosky').doc('prev_r' + i).delete().catch(() => {}));
+      }
+    }
+    await Promise.all(writes);
+    window.__hoskyPrevReplays = prevSlots;
+  } catch (e) {
+    console.warn('archiveReplaysToPrevious failed', e);
+  }
+}
+
+async function clearCloudReplays() {
+  if (!cloudReady) return;
+  try {
+    // Move current Top 3 replays into previous-month slots first
+    await archiveReplaysToPrevious();
+    await Promise.all([0, 1, 2].map(i =>
+      db.collection('hosky').doc('r' + i).delete().catch(() => {})
+    ));
+    window.__hoskyCloudReplays = [null, null, null];
+  } catch (e) {}
+}
+
+function rollCloudMonthIfNeeded(current, history) {
+  const key = centralMonthKey();
+  if (current.monthKey === key) return { current, history, rolled: false };
+  const has = (current.top || []).some(e => e && e.score > 0);
+  if (has) {
+    history = [{ monthKey: current.monthKey, top: current.top.map(e => ({ name: e.name || '', score: e.score || 0 })), gamesPlayed: current.gamesPlayed || 0 }].concat(history || []);
+    history = history.slice(0, 12);
+  }
+  // Archive gamesPlayed with the month in history entry
+  current = {
+    monthKey: key,
+    top: [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }],
+    gamesPlayed: 0,
+    updatedAt: Date.now()
+  };
+  return { current, history, rolled: true };
+}
+
+async function saveCloud(current, history) {
+  if (!cloudReady) return false;
+  try {
+    current.updatedAt = Date.now();
+    await db.collection('hosky').doc('current').set(current);
+    await db.collection('hosky').doc('history').set({ months: history || [] });
+    return true;
+  } catch (e) {
+    console.warn('saveCloud failed', e);
+    return false;
+  }
+}
+
+/** Merge a score into top3 — one entry per name (case-insensitive), keep highest only */
+function mergeTop3(top, name, newScore) {
+  const key = normName(name);
+  const pairs = [];
+  for (let i = 0; i < 3; i++) {
+    const t = top[i] || { name: '', score: 0 };
+    if (t.score > 0 && normName(t.name) !== key) {
+      pairs.push({ name: t.name, score: t.score });
+    }
+  }
+  let userBest = 0;
+  for (let i = 0; i < 3; i++) {
+    const t = top[i];
+    if (t && normName(t.name) === key) userBest = Math.max(userBest, t.score || 0);
+  }
+  const improved = newScore > userBest;
+  if (improved) {
+    pairs.push({ name: name, score: newScore });
+  } else if (userBest > 0) {
+    // keep existing best under same display name if possible
+    for (let i = 0; i < 3; i++) {
+      if (top[i] && normName(top[i].name) === key) {
+        pairs.push({ name: top[i].name, score: top[i].score });
+        break;
+      }
+    }
+  }
+  pairs.sort((a, b) => b.score - a.score);
+  const out = [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }];
+  let place = 0;
+  for (let i = 0; i < Math.min(3, pairs.length); i++) {
+    out[i] = pairs[i];
+    if (improved && normName(pairs[i].name) === key && Math.abs(pairs[i].score - newScore) < 0.001) place = i + 1;
+  }
+  return { top: out, place, improved };
+}
+
+const REPLAY_MAX = 300;
+const RAIN_VALUE = 0.25;
+const STORM_BASE_DURATION = 240; // ~4 sec base
+
+let bird = { x: 95, y: 300, vy: 0, rotation: 0 };
+let houses = [], treats = [], poops = [], bgBirds = [], raindrops = [];
+let score = 0, gameState = 'ready', frame = 0, nextHouse = 90;
+let imgLoaded = false, currentLevel = 1, lastStormLevel = 0;
+let audioCtx = null, playerName = '';
+let replayBuffer = [], lastSampleFrame = 0;
+let replayIndex = 0, replayPlaying = false, activeReplay = null;
+let stormTimer = 0, stormSpawnEvery = 3, stormSpeedMin = 7, stormSpeedMax = 12, stormHasLightning = false, lightningFlash = 0;
+let floatTexts = [];
+
+hoskyImg.onload = () => { imgLoaded = true; };
+
+const PRIZES = ['1B $HOSKY', '600M $HOSKY', '400M $HOSKY'];
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function centralMonthKey() {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago', year: 'numeric', month: '2-digit'
+  });
+  const parts = fmt.formatToParts(new Date());
+  return parts.find(p => p.type === 'year').value + '-' + parts.find(p => p.type === 'month').value;
+}
+function monthLabel(key) {
+  const [y, m] = key.split('-');
+  const names = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return names[+m] + ' ' + y;
+}
+function normName(n) { return (n || '').trim().toLowerCase(); }
+
+function defaultData() {
+  return {
+    monthKey: centralMonthKey(),
+    top: [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }],
+    replays: [null, null, null],
+    history: [], lastName: '', gamesPlayed: 0, version: VERSION
+  };
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultData();
+    const d = JSON.parse(raw);
+    if (!d.top || !Array.isArray(d.top)) d.top = defaultData().top;
+    while (d.top.length < 3) d.top.push({ name: '', score: 0 });
+    if (!d.replays || !Array.isArray(d.replays)) d.replays = [null, null, null];
+    while (d.replays.length < 3) d.replays.push(null);
+    if (!d.history) d.history = [];
+    if (typeof d.gamesPlayed !== 'number') d.gamesPlayed = 0;
+    if (!d.monthKey) d.monthKey = centralMonthKey();
+    return d;
+  } catch (e) { return defaultData(); }
+}
+function saveData(d) {
+  try { d.version = VERSION; localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); return true; }
+  catch (e) { return false; }
+}
+function rollMonthIfNeeded(d) {
+  const key = centralMonthKey();
+  if (d.monthKey !== key) {
+    if (d.top.some(e => e && e.score > 0)) {
+      d.history.unshift({ monthKey: d.monthKey, top: d.top.map(e => ({ name: e.name || '', score: e.score || 0 })) });
+      d.history = d.history.slice(0, 12);
+    }
+    d.monthKey = key;
+    d.top = [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }];
+    d.replays = [null, null, null];
+    saveData(d);
+  }
+  return d;
+}
+function formatScore(s) {
+  if (typeof s !== 'number') s = 0;
+  if (Math.abs(s - Math.round(s)) < 0.001) return String(Math.round(s * 100) / 100);
+  return (Math.round(s * 100) / 100).toFixed(2).replace(/\.?0+$/, '');
+}
+
+function renderBoardFromData(d, history, modeLabel) {
+  const key = d.monthKey || centralMonthKey();
+  let html = '<div class="label">This month — ' + monthLabel(key) + (modeLabel ? ' · ' + modeLabel : '') + '</div>';
+  let any = false;
+  const cloudR = window.__hoskyCloudReplays || [null, null, null];
+  const local = rollMonthIfNeeded(loadData());
+  for (let i = 0; i < 3; i++) {
+    if (d.top[i] && d.top[i].score > 0) {
+      any = true;
+      const hasReplay = (cloudR[i] && cloudR[i].frames && cloudR[i].frames.length) ||
+        (local.replays[i] && local.replays[i].frames && local.replays[i].frames.length);
+      html += '<div class="row">' +
+        '<span>' + MEDALS[i] + '</span>' +
+        '<span class="nm">' + d.top[i].name + '</span>' +
+        '<span class="sc">' + formatScore(d.top[i].score) + '</span>' +
+        (hasReplay ? '<button type="button" class="replay" data-place="' + i + '">▶</button>' : '') +
+        '</div>';
+    }
+  }
+  if (!any) html += '<div class="row" style="opacity:0.7">Nobody on the board yet — be first!</div>';
+  html += '<div class="meta">Games this month: ' + (d.gamesPlayed || 0) + '</div>';
+  boardBox.innerHTML = html;
+
+  // Previous month only (not full 12) + replay buttons when available
+  const prev = (history && history[0]) ? history[0] : null;
+  const prevR = window.__hoskyPrevReplays || [null, null, null];
+  if (prevBox) {
+    if (prev && prev.top && prev.top.some(t => t && t.score > 0)) {
+      let ph = '<div class="label">✦ Previous month — ' + monthLabel(prev.monthKey) + ' ✦</div>';
+      for (let i = 0; i < 3; i++) {
+        if (prev.top[i] && prev.top[i].score > 0) {
+          const hasPrevReplay = prevR[i] && prevR[i].frames && prevR[i].frames.length;
+          ph += '<div class="row"><span>' + MEDALS[i] + '</span><span class="nm">' + prev.top[i].name +
+            '</span><span class="sc">' + formatScore(prev.top[i].score) + '</span>' +
+            (hasPrevReplay ? '<button type="button" class="replay" data-place="' + i + '" data-prev="1">▶</button>' : '') +
+            '</div>';
+        }
+      }
+      prevBox.innerHTML = ph;
+      prevBox.style.display = 'block';
+    } else {
+      prevBox.innerHTML = '<div class="label">✦ Previous month ✦</div><div class="row" style="opacity:0.65">No previous month yet</div>';
+      prevBox.style.display = 'block';
+    }
+  }
+
+  function bindReplayBtns(root) {
+    if (!root) return;
+    root.querySelectorAll('button.replay').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const place = parseInt(btn.getAttribute('data-place'), 10);
+        const isPrev = btn.getAttribute('data-prev') === '1';
+        startReplay(place, isPrev);
+      });
+    });
+  }
+  bindReplayBtns(boardBox);
+  bindReplayBtns(prevBox);
+
+  if (local.lastName && discordInput && !discordInput.value) discordInput.value = local.lastName;
+  window.__hoskyHistory = history || local.history || [];
+  window.__hoskyCloudCurrent = d;
+  updateGamesHud(d.gamesPlayed || 0);
+}
+
+function updateGamesHud(n) {
+  if (!gamesPlayedHud) return;
+  gamesPlayedHud.textContent = 'Games this month: ' + (n || 0);
+}
+
+function setRunResult(title, bodyHtml) {
+  const h1 = messageEl.querySelector('h1');
+  const p = document.getElementById('runResult') || messageEl.querySelector('p');
+  if (h1 && title != null) h1.textContent = title;
+  if (p) {
+    if (bodyHtml) {
+      p.innerHTML = bodyHtml;
+      p.style.display = 'block';
+    } else {
+      p.innerHTML = '';
+      p.style.display = 'none';
+    }
+  }
+}
+function clearRunResult() {
+  const h1 = messageEl.querySelector('h1');
+  if (h1) h1.textContent = '🐾 Hosky Flyer 🐾';
+  setRunResult(null, '');
+}
+
+function refreshUI() {
+  if (gameState === 'playing' || gameState === 'waiting' || gameState === 'replay') return;
+  const local = rollMonthIfNeeded(loadData());
+  renderBoardFromData(local, local.history, cloudReady ? 'syncing…' : 'this device');
+
+  if (cloudReady) {
+    loadCloud().then(async (cloud) => {
+      if (!cloud) { renderBoardFromData(local, local.history, 'offline'); return; }
+      let { current, history, replays, prevReplays } = cloud;
+      const rolled = rollCloudMonthIfNeeded(current, history);
+      if (rolled.rolled) {
+        await saveCloud(rolled.current, rolled.history);
+        await clearCloudReplays(); // archives r* → prev_r* then clears current
+        replays = [null, null, null];
+        // reload prev after archive
+        try {
+          const ps = await Promise.all([0,1,2].map(i => db.collection('hosky').doc('prev_r' + i).get()));
+          prevReplays = ps.map(s => (s.exists && s.data().frames) ? s.data() : null);
+        } catch (e) {}
+      }
+      current = rolled.current;
+      history = rolled.history;
+      window.__hoskyCloudReplays = replays || [null, null, null];
+      window.__hoskyPrevReplays = prevReplays || [null, null, null];
+      renderBoardFromData(current, history, 'online');
+    }).catch(() => renderBoardFromData(local, local.history, 'offline'));
+  }
+}
+
+function insertScore(newScore, name, frames) {
+  const d = rollMonthIfNeeded(loadData());
+  name = (name || 'Anonymous').trim() || 'Anonymous';
+  const key = normName(name);
+
+  let userBest = 0;
+  for (let i = 0; i < 3; i++) {
+    if (d.top[i] && normName(d.top[i].name) === key) {
+      userBest = Math.max(userBest, d.top[i].score || 0);
+    }
+  }
+  const improvedLocal = newScore > userBest;
+
+  let pairs = [];
+  for (let i = 0; i < 3; i++) {
+    const t = d.top[i] || { name: '', score: 0 };
+    if (t.score > 0 && normName(t.name) !== key) {
+      pairs.push({ name: t.name, score: t.score, replay: d.replays[i] || null });
+    }
+  }
+
+  let place = 0;
+  if (improvedLocal) {
+    const myReplay = (frames && frames.length > 15) ? {
+      name, score: newScore, version: VERSION, frames: frames.slice(), savedAt: new Date().toISOString()
+    } : null;
+    pairs.push({ name, score: newScore, replay: myReplay });
+  } else if (userBest > 0) {
+    for (let i = 0; i < 3; i++) {
+      if (d.top[i] && normName(d.top[i].name) === key) {
+        pairs.push({ name: d.top[i].name, score: d.top[i].score, replay: d.replays[i] || null });
+        break;
+      }
+    }
+  }
+
+  pairs.sort((a, b) => b.score - a.score);
+  pairs = pairs.slice(0, 3);
+
+  d.top = [{ name: '', score: 0 }, { name: '', score: 0 }, { name: '', score: 0 }];
+  d.replays = [null, null, null];
+  for (let i = 0; i < pairs.length; i++) {
+    d.top[i] = { name: pairs[i].name, score: pairs[i].score };
+    d.replays[i] = pairs[i].replay || null;
+    if (improvedLocal && normName(pairs[i].name) === key && Math.abs(pairs[i].score - newScore) < 0.001) {
+      place = i + 1;
+    }
+  }
+
+  d.lastName = name;
+  d.gamesPlayed = (d.gamesPlayed || 0) + 1;
+  saveData(d);
+
+  // Shared cloud board + shared Top 3 replays
+  if (cloudReady) {
+    const framesCopy = (frames && frames.length > 15) ? frames.slice() : null;
+    insertScoreCloud(newScore, name, framesCopy).then((cloudResult) => {
+      if (cloudResult && cloudResult.place > 0) place = cloudResult.place;
+      refreshUI();
+    }).catch(e => console.warn(e));
+  }
+
+  return { place, improved: improvedLocal };
+}
+
+async function insertScoreCloud(newScore, name, frames) {
+  if (!cloudReady) return null;
+  try {
+    const curRef = db.collection('hosky').doc('current');
+    const histRef = db.collection('hosky').doc('history');
+    let result = { place: 0, improved: false, top: null, rolled: false };
+    await db.runTransaction(async (tx) => {
+      const curSnap = await tx.get(curRef);
+      const histSnap = await tx.get(histRef);
+      let current = curSnap.exists ? curSnap.data() : defaultCloudCurrent();
+      let history = histSnap.exists && Array.isArray(histSnap.data().months) ? histSnap.data().months : [];
+      if (!current.top) current.top = defaultCloudCurrent().top;
+      const rolled = rollCloudMonthIfNeeded(current, history);
+      current = rolled.current;
+      history = rolled.history;
+      result.rolled = rolled.rolled;
+      const merged = mergeTop3(current.top, name, newScore);
+      current.top = merged.top;
+      current.gamesPlayed = (current.gamesPlayed || 0) + 1;
+      current.updatedAt = Date.now();
+      result = { place: merged.place, improved: merged.improved, top: merged.top, rolled: rolled.rolled };
+      tx.set(curRef, current);
+      tx.set(histRef, { months: history });
+    });
+    if (result.rolled) await clearCloudReplays();
+    // Upload / reshuffle shared replays for current Top 3
+    if (result.top) {
+      await syncCloudReplays(result.place, frames, name, newScore, result.top);
+    }
+    return result;
+  } catch (e) {
+    console.warn('insertScoreCloud failed', e);
+    return null;
+  }
+}
+
+function showHistory() {
+  const local = rollMonthIfNeeded(loadData());
+  const d = window.__hoskyCloudCurrent || local;
+  const hist = window.__hoskyHistory || local.history || [];
+  let html = '<div class="label">🏆 Monthly History</div>';
+  html += '<div class="prize"><strong>Monthly deal</strong> — 🥇 1B · 🥈 600M · 🥉 400M<br>Play as much — only your top score counts · Resets 1st (CT)</div>';
+  const render = (label, top, cur) => {
+    html += '<div class="month">' + label + (cur ? ' (current)' : '') + '</div>';
+    let any = false;
+    for (let i = 0; i < 3; i++) {
+      if (top[i] && top[i].score > 0) {
+        html += '<div class="row">' + MEDALS[i] + ' ' + top[i].name + ' — ' + formatScore(top[i].score) +
+          ' <span style="opacity:0.7">(' + PRIZES[i] + ')</span></div>';
+        any = true;
+      }
+    }
+    if (!any) html += '<div class="row" style="opacity:0.6">No scores</div>';
+  };
+  render(monthLabel(d.monthKey || local.monthKey), d.top || local.top, true);
+  for (const w of hist) render(monthLabel(w.monthKey), w.top || [], false);
+  html += '<div style="margin-top:8px;opacity:0.75">Total games: ' + (d.gamesPlayed || local.gamesPlayed || 0) + '</div>';
+  winnersBox.innerHTML = html;
+  winnersBox.classList.toggle('hidden');
+}
+
+function sampleState() {
+  const gp = (window.__hoskyCloudCurrent && window.__hoskyCloudCurrent.gamesPlayed) ||
+    (rollMonthIfNeeded(loadData()).gamesPlayed) || 0;
+  return {
+    s: score,
+    gp: gp,
+    bx: Math.round(bird.x * 10) / 10,
+    by: Math.round(bird.y * 10) / 10,
+    br: Math.round(bird.rotation * 10) / 10,
+    h: houses.map(h => ({
+      x: Math.round(h.x * 10) / 10, t: Math.round(h.top * 10) / 10, b: Math.round(h.bottom * 10) / 10,
+      w: h.colors ? h.colors.wall : '#E53935', r: h.colors ? h.colors.roof : '#B71C1C',
+      d: h.colors ? h.colors.door : '#5D4037', m: h.moving ? 1 : 0
+    })),
+    tr: treats.filter(t => !t.collected).map(t => ({
+      x: Math.round(t.x * 10) / 10, y: Math.round(t.y * 10) / 10, v: t.value
+    })),
+    // poo positions for accurate replay
+    pp: poops.filter(p => !p.collected).map(p => ({
+      x: Math.round(p.x * 10) / 10, y: Math.round(p.y * 10) / 10, v: p.value || 5
+    })),
+    // More drops so storm phases look full in replay
+    rd: raindrops.slice(0, 80).map(r => ({
+      x: Math.round(r.x), y: Math.round(r.y),
+      vy: Math.round((r.vy || 8) * 10) / 10,
+      len: Math.round(r.len || 10)
+    })),
+    // Storm phase so sky/lightning match during replay
+    st: stormTimer > 0 ? 1 : 0,
+    stm: stormTimer,
+    lf: lightningFlash,
+    // Point balloons for replay playback
+    ft: floatTexts.slice(0, 6).map(f => ({
+      t: f.text, l: f.life, m: f.maxLife, y: Math.round(f.y * 10) / 10, k: f.kind || 'normal'
+    }))
+  };
+}
+function pushSample() {
+  if (gameState !== 'playing') return;
+  if (frame - lastSampleFrame < 2) return;
+  lastSampleFrame = frame;
+  replayBuffer.push(sampleState());
+  if (replayBuffer.length > REPLAY_MAX) replayBuffer.shift();
+}
+function startReplay(place, isPrev) {
+  const d = loadData();
+  const cloudR = isPrev ? (window.__hoskyPrevReplays || []) : (window.__hoskyCloudReplays || []);
+  activeReplay = (cloudR[place] && cloudR[place].frames && cloudR[place].frames.length)
+    ? cloudR[place]
+    : (!isPrev ? d.replays[place] : null);
+  if (!activeReplay || !activeReplay.frames || !activeReplay.frames.length) return;
+  gameState = 'replay'; replayPlaying = true; replayIndex = 0;
+  messageEl.classList.add('hidden');
+  if (winnersBox) winnersBox.classList.add('hidden');
+  replayBadge.style.display = 'block';
+  replayBadge.textContent = '▶ ' + MEDALS[place] + (isPrev ? ' PREV' : '') + ' REPLAY';
+  scoreEl.textContent = '0';
+  floatTexts = [];
+  if (gamesPlayedHud) {
+    const gp = activeReplay.gamesPlayed || (activeReplay.frames[0] && activeReplay.frames[0].gp) || 0;
+    updateGamesHud(gp);
+    gamesPlayedHud.style.display = 'block';
+  }
+}
+function updateReplay() {
+  if (!replayPlaying || !activeReplay) return;
+  const frames = activeReplay.frames;
+  if (replayIndex >= frames.length) {
+    replayPlaying = false; gameState = 'over';
+    replayBadge.style.display = 'none';
+    messageEl.classList.remove('hidden');
+    setRunResult(
+      'Replay finished',
+      '<strong>' + formatScore(activeReplay.score) + '</strong> by ' + (activeReplay.name || '?') +
+      '<br><small>v' + (activeReplay.version || '?') + '</small>'
+    );
+    startBtn.textContent = 'Try Again';
+    refreshUI();
+    return;
+  }
+  const f = frames[replayIndex++];
+  score = f.s; scoreEl.textContent = formatScore(score);
+  if (typeof f.gp === 'number' && gamesPlayedHud) {
+    updateGamesHud(f.gp);
+    gamesPlayedHud.style.display = 'block';
+  }
+  bird.x = f.bx; bird.y = f.by; bird.rotation = f.br;
+  // Restore point balloons recorded in this frame
+  if (f.ft && f.ft.length) {
+    floatTexts = f.ft.map(x => ({
+      text: x.t, life: x.l, maxLife: x.m || 70, y: x.y || 0, kind: x.k || 'normal'
+    }));
+  } else {
+    floatTexts = [];
+  }
+  houses = (f.h || []).map(h => ({
+    x: h.x, top: h.t, bottom: h.b, gap: h.b - h.t, moving: !!h.m,
+    colors: { wall: h.w, roof: h.r, door: h.d, trim: '#fff' }
+  }));
+  treats = (f.tr || []).map(t => ({ x: t.x, y: t.y, value: t.v, collected: false, baseY: t.y, bobPhase: 0 }));
+  poops = (f.pp || []).map(p => ({
+    x: p.x, y: p.y, baseY: p.y, value: p.v || 5, collected: false, bobPhase: 0
+  }));
+  raindrops = (f.rd || []).map(r => ({
+    x: r.x, y: r.y,
+    vy: r.vy || 8,
+    len: r.len || 10,
+    collected: false
+  }));
+  // Restore storm visuals for this frame
+  if (typeof f.stm === 'number') stormTimer = f.stm;
+  else stormTimer = f.st ? 30 : 0;
+  lightningFlash = f.lf || 0;
+  if (stormTimer > 0) stormHasLightning = true;
+}
+
+let bgmOn = true;
+let bgmTimer = null;
+let bgmStep = 0;
+let bgmStarted = false;
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+/** Light looping tune — playful "Hosky drifting toward zero" vibe (original, not a cover) */
+function playBgmNote(freq, start, dur, vol) {
+  if (!audioCtx || !bgmOn) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(freq, start);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(start); o.stop(start + dur + 0.02);
+}
+
+function bgmTick() {
+  if (!audioCtx || !bgmOn) return;
+  // Descending motif: cheerful then settling lower ("to zero")
+  // Phrase A (upbeat) then Phrase B (drifts down)
+  const phrase = [
+    523.25, 587.33, 659.25, 587.33,  // C D E D
+    523.25, 440.00, 392.00, 0,       // C A G rest
+    392.00, 349.23, 329.63, 293.66,  // G F E D
+    261.63, 196.00, 130.81, 0        // C G3 C3 rest  ← "to zero"
+  ];
+  const step = bgmStep % phrase.length;
+  const freq = phrase[step];
+  const t = audioCtx.currentTime;
+  if (freq > 0) {
+    playBgmNote(freq, t, 0.22, 0.028);
+    // soft bass under longer notes
+    if (step % 4 === 0) playBgmNote(freq / 2, t, 0.35, 0.016);
+  }
+  bgmStep++;
+}
+
+function startBgm() {
+  if (bgmStarted || !bgmOn) return;
+  initAudio();
+  bgmStarted = true;
+  bgmStep = 0;
+  if (bgmTimer) clearInterval(bgmTimer);
+  bgmTimer = setInterval(bgmTick, 280);
+  bgmTick();
+  const btn = document.getElementById('musicBtn');
+  if (btn) btn.textContent = '♪ On';
+}
+
+function stopBgm() {
+  if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+  bgmStarted = false;
+  const btn = document.getElementById('musicBtn');
+  if (btn) btn.textContent = '♪ Off';
+}
+
+function toggleBgm() {
+  bgmOn = !bgmOn;
+  if (bgmOn) startBgm();
+  else stopBgm();
+}
+function playPassSound() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.type = 'sine'; o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(280, t + 0.12);
+  g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+  o.start(t); o.stop(t + 0.15);
+}
+function playEatSound(vol) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const n = audioCtx.sampleRate * 0.08;
+  const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.5);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const g = audioCtx.createGain(); const f = audioCtx.createBiquadFilter();
+  f.type = 'bandpass'; f.frequency.value = 1200;
+  src.connect(f); f.connect(g); g.connect(audioCtx.destination);
+  const v = (typeof vol === 'number') ? vol : 0.2;
+  g.gain.setValueAtTime(Math.max(0.001, v), t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  src.start(t); src.stop(t + 0.09);
+}
+function playFlapSound() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  o.type = 'sine'; o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(85, t + 0.09);
+  g.gain.setValueAtTime(0.06, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  o.start(t); o.stop(t + 0.11);
+}
+
+/** Floating point popup near Pause (top-left) — visual only, no gameplay change */
+function spawnFloat(pts, kind) {
+  const label = (pts >= 5 ? 'Poo +' : '+') + formatScore(pts);
+  floatTexts.push({
+    text: label,
+    life: 70,
+    maxLife: 70,
+    y: 0,
+    kind: kind || 'normal'
+  });
+  if (floatTexts.length > 6) floatTexts.shift();
+}
+
+function updateFloats() {
+  for (let i = floatTexts.length - 1; i >= 0; i--) {
+    floatTexts[i].life--;
+    floatTexts[i].y -= 0.7;
+    if (floatTexts[i].life <= 0) floatTexts.splice(i, 1);
+  }
+}
+
+function drawFloats() {
+  // To the right of pause button so it stays clear
+  const baseX = 88;
+  const baseY = 42;
+  for (let i = 0; i < floatTexts.length; i++) {
+    const f = floatTexts[i];
+    const alpha = Math.max(0, f.life / f.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = 'bold 16px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const x = baseX;
+    const y = baseY + f.y - i * 4;
+    // balloon bubble
+    const w = ctx.measureText(f.text).width + 14;
+    const h = 22;
+    ctx.fillStyle = f.kind === 'poop' ? 'rgba(120,80,40,0.85)' :
+      f.kind === 'rain' ? 'rgba(40,100,160,0.8)' :
+      f.kind === 'treat' ? 'rgba(180,120,20,0.85)' : 'rgba(30,120,60,0.85)';
+    ctx.beginPath();
+    const r = 10;
+    const bx = x - 6, by = y - h / 2;
+    ctx.moveTo(bx + r, by);
+    ctx.arcTo(bx + w, by, bx + w, by + h, r);
+    ctx.arcTo(bx + w, by + h, bx, by + h, r);
+    ctx.arcTo(bx, by + h, bx, by, r);
+    ctx.arcTo(bx, by, bx + w, by, r);
+    ctx.closePath();
+    ctx.fill();
+    // little tail toward pause
+    ctx.beginPath();
+    ctx.moveTo(bx + 8, by + h);
+    ctx.lineTo(bx + 2, by + h + 6);
+    ctx.lineTo(bx + 14, by + h);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.4)';
+    ctx.shadowBlur = 2;
+    ctx.fillText(f.text, x, y);
+    ctx.restore();
+  }
+}
+
+const housePalettes = [
+  { wall: '#E53935', roof: '#B71C1C', door: '#5D4037', trim: '#FFCDD2' },
+  { wall: '#1E88E5', roof: '#0D47A1', door: '#37474F', trim: '#BBDEFB' },
+  { wall: '#43A047', roof: '#1B5E20', door: '#5D4037', trim: '#C8E6C9' },
+  { wall: '#FB8C00', roof: '#E65100', door: '#5D4037', trim: '#FFE0B2' },
+  { wall: '#8E24AA', roof: '#4A148C', door: '#37474F', trim: '#E1BEE7' },
+  { wall: '#00ACC1', roof: '#006064', door: '#5D4037', trim: '#B2EBF2' },
+  { wall: '#FDD835', roof: '#F9A825', door: '#5D4037', trim: '#FFF9C4' },
+];
+
+function getDifficulty() {
+  const level = Math.floor(score / 8) + 1;
+  currentLevel = level;
+  return {
+    level,
+    // Slower ramp — stays easy longer
+    speed: Math.min(2.05 + score * 0.028, 3.6),
+    // Gaps shrink slowly, stay generous
+    gap: Math.max(190 - Math.floor(score / 6) * 2.5, 145),
+    // More spacing between houses early/mid
+    spawnBase: Math.max(105 - Math.floor(score / 5) * 1.8, 68),
+    // Moving houses much later and milder
+    moveChance: score >= 20 ? Math.min(0.10 + (score - 20) * 0.012, 0.45) : 0,
+    moveAmp: score >= 20 ? Math.min(10 + (score - 20) * 0.7, 30) : 0,
+    moveSpeed: score >= 20 ? Math.min(0.40 + (score - 20) * 0.022, 1.0) : 0
+  };
+}
+
+function stormIntensity(level) {
+  // Heavier every 3 levels starting at 3: 3,6,9...
+  const tier = Math.max(0, Math.floor((level - 3) / 3));
+  return {
+    duration: STORM_BASE_DURATION + tier * 60, // longer as tiers rise
+    spawnEvery: Math.max(1, 3 - tier),         // more drops
+    burst: 35 + tier * 18,
+    speedMin: 7 + tier * 1.2,
+    speedMax: 12 + tier * 2,
+    lightning: tier >= 1                       // lightning from level 6+
+  };
+}
+
+function startStorm(level) {
+  const intensity = stormIntensity(level || currentLevel);
+  stormTimer = intensity.duration;
+  stormSpawnEvery = intensity.spawnEvery;
+  stormSpeedMin = intensity.speedMin;
+  stormSpeedMax = intensity.speedMax;
+  stormHasLightning = intensity.lightning;
+  lightningFlash = 0;
+  for (let i = 0; i < intensity.burst; i++) {
+    raindrops.push({
+      x: Math.random() * canvas.width,
+      y: -20 - Math.random() * 220,
+      vy: intensity.speedMin + Math.random() * (intensity.speedMax - intensity.speedMin),
+      len: 8 + Math.random() * 10,
+      collected: false
+    });
+  }
+}
+
+function initBgBirds() {
+  bgBirds = [];
+  for (let i = 0; i < 7; i++) {
+    bgBirds.push({
+      x: Math.random() * canvas.width, y: 40 + Math.random() * 160,
+      speed: 0.3 + Math.random() * 0.6, size: 0.6 + Math.random() * 0.7,
+      wingPhase: Math.random() * Math.PI * 2, wingSpeed: 0.12 + Math.random() * 0.08
+    });
+  }
+}
+
+function reset(autoStart) {
+  try { initAudio(); } catch (e) {}
+  playerName = (discordInput.value || '').trim() || 'Anonymous';
+  try {
+    const d = loadData(); d.lastName = playerName; saveData(d);
+  } catch (e) {}
+
+  bird = { x: 95, y: 300, vy: 0, rotation: 0 };
+  houses = []; treats = []; poops = []; raindrops = []; floatTexts = [];
+  score = 0; frame = 0; nextHouse = 90; currentLevel = 1; lastStormLevel = 0;
+  stormTimer = 0;
+  replayBuffer = []; lastSampleFrame = 0;
+  scoreEl.textContent = '0'; levelEl.textContent = 'Level 1';
+  replayPlaying = false;
+  messageEl.classList.add('hidden');
+  winnersBox.classList.add('hidden');
+  replayBadge.style.display = 'none';
+  setPauseVisible(true);
+  initBgBirds();
+  lastStormLevel = 0;
+
+  // autoStart=true: begin flying immediately (needed on mobile / Messages)
+  if (autoStart) {
+    gameState = 'playing';
+    bird.vy = FLAP_STRENGTH;
+    try { playFlapSound(); } catch (e) {}
+  } else {
+    gameState = 'waiting';
+  }
+  const gc = document.getElementById('game-container');
+  if (gc) gc.classList.add('playing');
+  if (gamesPlayedHud) {
+    const cur = window.__hoskyCloudCurrent || rollMonthIfNeeded(loadData());
+    updateGamesHud(cur.gamesPlayed || 0);
+    gamesPlayedHud.style.display = 'block';
+  }
+}
+
+function flap() {
+  initAudio();
+  if (gameState === 'replay') return;
+  // Require Start Flying button on menu (ready/over)
+  if (gameState === 'ready') return;
+  if (gameState === 'over') return;
+  if (gameState === 'waiting') {
+    gameState = 'playing';
+    bird.vy = FLAP_STRENGTH;
+    playFlapSound();
+    return;
+  }
+  if (gameState === 'playing') {
+    bird.vy = FLAP_STRENGTH;
+    playFlapSound();
+  }
+}
+
+function createHouse() {
+  const d = getDifficulty();
+  const minY = 105, maxY = canvas.height - 155 - d.gap;
+  const topHeight = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
+  const isMoving = Math.random() < d.moveChance;
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  const palette = housePalettes[Math.floor(Math.random() * housePalettes.length)];
+  houses.push({
+    x: canvas.width + 14, baseTop: topHeight, top: topHeight,
+    gap: d.gap, bottom: topHeight + d.gap, scored: false,
+    moving: isMoving, moveDir: dir, movePhase: Math.random() * Math.PI * 2,
+    amp: d.moveAmp, moveSpeed: d.moveSpeed, colors: palette
+  });
+  if (Math.random() < 0.55) {
+    const treatY = topHeight + d.gap * (0.28 + Math.random() * 0.44);
+    treats.push({
+      x: canvas.width + 14 + HOUSE_WIDTH / 2, y: treatY, baseY: treatY,
+      collected: false, bobPhase: Math.random() * Math.PI * 2,
+      value: Math.random() < 0.22 ? 3 : 2
+    });
+  }
+  // Risky poo in the OPEN GAP between doghouses, close to the grass (grab-able)
+  if (Math.random() < 0.8) {
+    // Place AFTER this house so it sits in the clear space before the next house
+    const px = canvas.width + 14 + HOUSE_WIDTH + 45 + Math.random() * 35;
+    // Above grass, in flyable air (ground kill is ~height-56; keep reachable)
+    const py = canvas.height - 72 - Math.random() * 8;
+    poops.push({
+      x: px, y: py, baseY: py, collected: false,
+      bobPhase: Math.random() * Math.PI * 2,
+      value: 5
+    });
+  }
+}
+
+function update() {
+  if (gameState === 'replay') {
+    if (frame % 2 === 0) updateReplay();
+    frame++;
+    return;
+  }
+  if (gameState === 'paused') {
+    return;
+  }
+  if (gameState === 'waiting') {
+    frame++;
+    bird.y = 300 + Math.sin(frame * 0.08) * 6;
+    bird.rotation = 0; bird.vy = 0;
+    // rain still falls while waiting
+    updateRain(false);
+    for (const b of bgBirds) {
+      b.x -= b.speed * 0.4; b.wingPhase += b.wingSpeed;
+      if (b.x < -40) { b.x = canvas.width + 20; b.y = 30 + Math.random() * 170; }
+    }
+    return;
+  }
+  if (gameState !== 'playing') return;
+  frame++;
+  const d = getDifficulty();
+
+  // Storm at level 3, 6, 9, ... (every 3 levels starting at 3)
+  if (d.level >= 3 && d.level % 3 === 0 && d.level > lastStormLevel) {
+    lastStormLevel = d.level;
+    startStorm(d.level);
+  }
+
+  bird.vy += GRAVITY; bird.y += bird.vy;
+  bird.rotation = Math.min(Math.max(bird.vy * 3.2, -25), 55);
+
+  for (const b of bgBirds) {
+    b.x -= b.speed; b.wingPhase += b.wingSpeed;
+    if (b.x < -40) { b.x = canvas.width + 20; b.y = 30 + Math.random() * 170; }
+  }
+
+  if (frame >= nextHouse) {
+    createHouse();
+    nextHouse = frame + d.spawnBase + Math.floor(Math.random() * 16) - 5;
+  }
+
+  for (let i = houses.length - 1; i >= 0; i--) {
+    const h = houses[i];
+    h.x -= d.speed;
+    if (h.moving) {
+      h.movePhase += h.moveSpeed * 0.04;
+      const offset = Math.sin(h.movePhase) * h.amp * h.moveDir;
+      h.top = h.baseTop + offset; h.bottom = h.top + h.gap;
+      if (h.top < 48) { h.top = 48; h.bottom = h.top + h.gap; }
+      if (h.bottom > canvas.height - 75) { h.bottom = canvas.height - 75; h.top = h.bottom - h.gap; }
+    }
+    if (!h.scored && h.x + HOUSE_WIDTH < bird.x - 4) {
+      h.scored = true; score += 1;
+      scoreEl.textContent = formatScore(score);
+      levelEl.textContent = 'Level ' + getDifficulty().level;
+      spawnFloat(1, 'house');
+      playPassSound();
+    }
+    if (h.x + HOUSE_WIDTH < -20) houses.splice(i, 1);
+  }
+
+  for (let i = treats.length - 1; i >= 0; i--) {
+    const t = treats[i];
+    t.x -= d.speed; t.bobPhase += 0.08; t.y = t.baseY + Math.sin(t.bobPhase) * 5;
+    if (!t.collected && Math.hypot(t.x - bird.x, t.y - bird.y) < 30) {
+      t.collected = true; score += t.value;
+      scoreEl.textContent = formatScore(score);
+      levelEl.textContent = 'Level ' + getDifficulty().level;
+      spawnFloat(t.value, 'treat');
+      playEatSound();
+    }
+    if (t.x < -30 || t.collected) treats.splice(i, 1);
+  }
+
+  // Risky poops
+  const dSpeed = d.speed;
+  for (let i = poops.length - 1; i >= 0; i--) {
+    const p = poops[i];
+    p.x -= dSpeed;
+    p.bobPhase += 0.1;
+    p.y = p.baseY + Math.sin(p.bobPhase) * 3;
+    if (!p.collected && Math.hypot(p.x - bird.x, p.y - bird.y) < 38) {
+      p.collected = true;
+      score += p.value;
+      scoreEl.textContent = formatScore(score);
+      levelEl.textContent = 'Level ' + getDifficulty().level;
+      spawnFloat(p.value, 'poop');
+      playEatSound();
+    }
+    if (p.x < -30 || p.collected) poops.splice(i, 1);
+  }
+
+  updateRain(true);
+  updateFloats();
+  pushSample();
+
+  const half = BIRD_SIZE * 0.28;
+  if (bird.y + half > canvas.height - 56 || bird.y - half < 0) { gameOver(); return; }
+  for (const h of houses) {
+    if (bird.x + half > h.x + 10 && bird.x - half < h.x + HOUSE_WIDTH - 10) {
+      if (bird.y - half < h.top || bird.y + half > h.bottom) { gameOver(); return; }
+    }
+  }
+}
+
+function updateRain(collect) {
+  if (stormTimer > 0) {
+    stormTimer--;
+    if (stormTimer % stormSpawnEvery === 0) {
+      raindrops.push({
+        x: Math.random() * canvas.width,
+        y: -10 - Math.random() * 40,
+        vy: stormSpeedMin + Math.random() * (stormSpeedMax - stormSpeedMin),
+        len: 8 + Math.random() * 10,
+        collected: false
+      });
+    }
+    // Lightning flashes on heavier storms
+    if (stormHasLightning && Math.random() < 0.012) {
+      lightningFlash = 8;
+    }
+    if (lightningFlash > 0) lightningFlash--;
+  }
+  for (let i = raindrops.length - 1; i >= 0; i--) {
+    const r = raindrops[i];
+    r.y += r.vy;
+    if (collect && !r.collected && gameState === 'playing') {
+      if (Math.hypot(r.x - bird.x, r.y - bird.y) < 26) {
+        r.collected = true;
+        score += RAIN_VALUE;
+        scoreEl.textContent = formatScore(score);
+        levelEl.textContent = 'Level ' + getDifficulty().level;
+        spawnFloat(RAIN_VALUE, 'rain');
+        playEatSound(0.03);
+      }
+    }
+    if (r.y > canvas.height || r.collected) raindrops.splice(i, 1);
+  }
+}
+
+function gameOver() {
+  gameState = 'over';
+  const gc = document.getElementById('game-container');
+  if (gc) gc.classList.remove('playing');
+  if (gamesPlayedHud) gamesPlayedHud.style.display = 'none';
+  let result = { place: 0, improved: false };
+  try {
+    result = insertScore(score, playerName, replayBuffer) || result;
+  } catch (e) {
+    console.warn('insertScore error', e);
+  }
+  messageEl.classList.remove('hidden');
+
+  if (result.place > 0) {
+    setRunResult(
+      MEDALS[result.place - 1] + ' ' + (result.place === 1 ? '1st place!' : result.place === 2 ? '2nd place!' : '3rd place!'),
+      'Score: <strong>' + formatScore(score) + '</strong> · Level ' + currentLevel + '<br>' +
+      'Saved for <strong>' + playerName + '</strong><br>' +
+      '<small>Only your highest score counts for the month</small><br>' +
+      '<small>Hold rank at month end for ' + PRIZES[result.place - 1] + '</small>'
+    );
+  } else if (result.improved === false) {
+    setRunResult(
+      'Crashed!',
+      'Score: <strong>' + formatScore(score) + '</strong> · Level ' + currentLevel + '<br>' +
+      '<small>Not a new personal best — your top score still counts</small>'
+    );
+  } else {
+    setRunResult(
+      'Crashed!',
+      'Score: <strong>' + formatScore(score) + '</strong> · Level ' + currentLevel + '<br>' +
+      '<small>Not in top 3 this month — try again!</small>'
+    );
+  }
+  if (startBtn) startBtn.textContent = 'Try Again';
+  if (winnersBox) winnersBox.classList.add('hidden');
+  setPauseVisible(false);
+  try { refreshUI(); } catch (e) { console.warn(e); }
+}
+
+function drawBackground() {
+  const storming = stormTimer > 0;
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  if (storming) {
+    grad.addColorStop(0, '#5a7a8f');
+    grad.addColorStop(0.6, '#6a8fa3');
+    grad.addColorStop(1, '#8aa8b8');
+  } else {
+    grad.addColorStop(0, '#4FC3F7');
+    grad.addColorStop(0.6, '#81D4FA');
+    grad.addColorStop(1, '#B3E5FC');
+  }
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Lightning flash
+  if (lightningFlash > 0) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.15 + lightningFlash * 0.06) + ')';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // bolt
+    if (lightningFlash > 4) {
+      ctx.strokeStyle = 'rgba(255,255,220,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let lx = 80 + Math.random() * 240;
+      let ly = 0;
+      ctx.moveTo(lx, ly);
+      for (let i = 0; i < 5; i++) {
+        lx += (Math.random() - 0.5) * 40;
+        ly += 30 + Math.random() * 40;
+        ctx.lineTo(lx, ly);
+      }
+      ctx.stroke();
+    }
+  }
+
+  for (const b of bgBirds) {
+    ctx.save(); ctx.translate(b.x, b.y); ctx.scale(b.size, b.size);
+    const wingY = Math.sin(b.wingPhase) * 4;
+    ctx.strokeStyle = 'rgba(40,40,40,0.55)'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(-10, wingY - 6, -18, wingY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(10, wingY - 6, 18, wingY); ctx.stroke();
+    ctx.fillStyle = 'rgba(40,40,40,0.5)'; ctx.beginPath(); ctx.arc(0, 1, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawRain() {
+  ctx.strokeStyle = 'rgba(200,220,255,0.75)';
+  ctx.lineWidth = 1.5;
+  for (const r of raindrops) {
+    if (r.collected) continue;
+    ctx.beginPath();
+    ctx.moveTo(r.x, r.y);
+    ctx.lineTo(r.x - 1.5, r.y + r.len);
+    ctx.stroke();
+  }
+}
+
+function drawGround() {
+  ctx.fillStyle = '#6D4C41'; ctx.fillRect(0, canvas.height - 56, canvas.width, 56);
+  ctx.fillStyle = '#66BB6A'; ctx.fillRect(0, canvas.height - 56, canvas.width, 13);
+  ctx.fillStyle = '#43A047';
+  for (let i = 0; i < canvas.width; i += 15) {
+    ctx.beginPath(); ctx.moveTo(i, canvas.height - 43); ctx.lineTo(i + 5, canvas.height - 53); ctx.lineTo(i + 10, canvas.height - 43); ctx.fill();
+  }
+}
+function drawDoghouse(h) {
+  const c = h.colors || housePalettes[0], x = h.x, w = HOUSE_WIDTH;
+  ctx.fillStyle = c.roof;
+  ctx.beginPath(); ctx.moveTo(x - 6, h.top); ctx.lineTo(x + w / 2, h.top - 28); ctx.lineTo(x + w + 6, h.top); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = c.wall; ctx.fillRect(x, 0, w, Math.max(0, h.top - 2));
+  const by = h.bottom;
+  ctx.fillStyle = c.wall; ctx.fillRect(x, by, w, canvas.height - by - 56);
+  ctx.fillStyle = c.roof;
+  ctx.beginPath(); ctx.moveTo(x - 7, by); ctx.lineTo(x + w / 2, by - 30); ctx.lineTo(x + w + 7, by); ctx.closePath(); ctx.fill();
+  const doorW = 32, doorH = 42, doorX = x + (w - doorW) / 2, doorY = by + 18;
+  ctx.fillStyle = c.door;
+  ctx.beginPath(); ctx.moveTo(doorX, doorY + doorH); ctx.lineTo(doorX, doorY + 12);
+  ctx.arc(doorX + doorW / 2, doorY + 12, doorW / 2, Math.PI, 0); ctx.lineTo(doorX + doorW, doorY + doorH); ctx.closePath(); ctx.fill();
+  if (h.moving) {
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath(); ctx.arc(x + w / 2, by - 14, 4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+function drawTreat(t) {
+  if (t.collected) return;
+  ctx.save(); ctx.translate(t.x, t.y);
+  const s = t.value >= 3 ? 1.25 : 1.0;
+  ctx.fillStyle = '#FFF8E1'; ctx.strokeStyle = '#FF8F00'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-8*s, -4*s); ctx.lineTo(8*s, -4*s);
+  ctx.quadraticCurveTo(10*s, -4*s, 10*s, 0); ctx.quadraticCurveTo(10*s, 4*s, 8*s, 4*s);
+  ctx.lineTo(-8*s, 4*s); ctx.quadraticCurveTo(-10*s, 4*s, -10*s, 0);
+  ctx.quadraticCurveTo(-10*s, -4*s, -8*s, -4*s); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-11*s, -5*s, 5*s, 0, Math.PI*2); ctx.arc(-11*s, 5*s, 5*s, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(11*s, -5*s, 5*s, 0, Math.PI*2); ctx.arc(11*s, 5*s, 5*s, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+function drawBird() {
+  ctx.save(); ctx.translate(bird.x, bird.y); ctx.rotate(bird.rotation * Math.PI / 180);
+  if (imgLoaded) ctx.drawImage(hoskyImg, -BIRD_SIZE/2, -BIRD_SIZE/2, BIRD_SIZE, BIRD_SIZE);
+  else { ctx.fillStyle = '#FFC107'; ctx.beginPath(); ctx.arc(0,0,BIRD_SIZE/2,0,Math.PI*2); ctx.fill(); }
+  ctx.restore();
+}
+function drawPoop(p) {
+  if (p.collected) return;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  // Soft-serve swirl look similar to the familiar emoji (original drawing)
+  ctx.fillStyle = '#7A4A1E';
+  ctx.beginPath(); ctx.ellipse(0, 11, 13, 7.5, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#8D5524';
+  ctx.beginPath(); ctx.ellipse(-2, 4, 11, 8, -0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#9A5C28';
+  ctx.beginPath(); ctx.ellipse(3, -3, 9, 7, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#A66B2F';
+  ctx.beginPath(); ctx.ellipse(-1, -9, 7, 6, -0.1, 0, Math.PI * 2); ctx.fill();
+  // tip curl
+  ctx.beginPath();
+  ctx.moveTo(2, -12);
+  ctx.quadraticCurveTo(10, -16, 6, -20);
+  ctx.quadraticCurveTo(2, -18, 0, -14);
+  ctx.fill();
+  // eyes (emoji-like)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(-3.5, -8, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.5, -8.5, 1.6, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-3.9, -8.4, 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.1, -8.9, 0.5, 0, Math.PI * 2); ctx.fill();
+  // soft highlight
+  ctx.fillStyle = 'rgba(255, 230, 180, 0.28)';
+  ctx.beginPath(); ctx.ellipse(-4, -2, 3, 2, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  drawBackground();
+  drawRain();
+  for (const h of houses) drawDoghouse(h);
+  for (const t of treats) drawTreat(t);
+  for (const p of poops) drawPoop(p);
+  drawGround(); drawBird();
+  if (gameState === 'playing' || gameState === 'waiting' || gameState === 'replay') drawFloats();
+}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+
+canvas.addEventListener('mousedown', e => { e.preventDefault(); flap(); });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); flap(); }, { passive: false });
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); flap(); }
+});
+const pauseBtn = document.getElementById('pauseBtn');
+
+function setPauseVisible(show) {
+  const btn = document.getElementById('pauseBtn');
+  if (btn) btn.style.display = show ? 'block' : 'none';
+}
+
+function doStart(e) {
+  try {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    try { startBgm(); } catch (err) {}
+    if (gameState === 'replay') { replayPlaying = false; replayBadge.style.display = 'none'; }
+    if (gameState === 'paused') {
+      gameState = 'playing';
+      startBtn.textContent = 'Start Flying';
+      messageEl.classList.add('hidden');
+      setPauseVisible(true);
+      return false;
+    }
+    clearRunResult();
+    reset(true);
+    setPauseVisible(true);
+  } catch (err) {
+    console.error(err);
+    alert('Start error: ' + (err && err.message ? err.message : err));
+  }
+  return false;
+}
+window.__hoskyStart = doStart;
+if (startBtn) {
+  startBtn.addEventListener('click', doStart);
+  startBtn.addEventListener('touchend', doStart, { passive: false });
+  startBtn.onclick = doStart;
+}
+const musicBtn = document.getElementById('musicBtn');
+if (musicBtn) {
+  musicBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleBgm(); });
+  musicBtn.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); toggleBgm(); }, { passive: false });
+}
+
+pauseBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  e.preventDefault();
+  if (gameState === 'playing' || gameState === 'waiting') {
+    gameState = 'paused';
+    messageEl.classList.remove('hidden');
+    setRunResult('Paused', 'Score: <strong>' + formatScore(score) + '</strong> · Level ' + currentLevel);
+    startBtn.textContent = 'Resume';
+    setPauseVisible(false);
+  }
+});
+if (historyBtn) historyBtn.addEventListener('click', e => { e.stopPropagation(); showHistory(); });
+discordInput.addEventListener('click', e => e.stopPropagation());
+discordInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); reset(true); }
+});
+// Must press Start Flying — no accidental start from tapping the menu
+messageEl.addEventListener('click', e => {
+  if (e.target.closest('a')) return;
+});
+
+initBgBirds();
+initFirebase();
+refreshUI();
+draw();
+loop();
+</script>
+</body>
+</html>
